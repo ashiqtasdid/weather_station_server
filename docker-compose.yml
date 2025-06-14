@@ -2,9 +2,8 @@ services:
   weather-iot:
     build: .
     container_name: weather-iot-server
-    restart: unless-stopped
-    ports:
-      - "3000:3000"
+    restart: unless-stopped    ports:
+      - "3022:3000"
     volumes:
       - weather_data:/app/data
       - ./logs:/app/logs
