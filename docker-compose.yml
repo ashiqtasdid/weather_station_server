@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  weather-iot:
+    build: .
+    container_name: weather-iot-server
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - weather_data:/app/data
+      - ./logs:/app/logs
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DB_PATH=/app/data/weather_data.db
+    healthcheck:
+      test: ["CMD", "node", "healthcheck.js"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - weather-network
+
+  # Optional: Nginx reverse proxy
+  nginx:
+    image: nginx:alpine
+    container_name: weather-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./ssl:/etc/nginx/ssl  # For HTTPS certificates
+    depends_on:
+      - weather-iot
+    networks:
+      - weather-network
+
+volumes:
+  weather_data:
+    driver: local
+
+networks:
+  weather-network:
+    driver: bridge

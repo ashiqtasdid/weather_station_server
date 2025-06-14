@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather IoT Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/index.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌤️</text></svg>">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🌤️ Weather IoT Station</h1>
+            <p>Real-time Environmental Monitoring Dashboard</p>
+            <div class="timestamp" id="lastUpdated">Loading...</div>
+        </header>
+        
+        <div class="status-bar" id="statusBar">
+            <div class="status-item">
+                <span class="status-indicator" id="connectionStatus">⚪</span>
+                <span id="connectionText">Connecting...</span>
+            </div>
+            <div class="status-item">
+                <span>📡 Device:</span>
+                <select id="deviceSelector">
+                    <option value="">All Devices</option>
+                </select>
+            </div>
+            <div class="status-item">
+                <span>⏱️ Refresh:</span>
+                <span id="refreshCountdown">30s</span>
+            </div>
+        </div>
+        
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card temperature">
+                <div class="stat-icon">🌡️</div>
+                <div class="stat-content">
+                    <div class="stat-value" id="tempValue">--</div>
+                    <div class="stat-label">Temperature</div>
+                    <div class="stat-unit">°C</div>
+                </div>
+                <div class="stat-trend" id="tempTrend"></div>
+            </div>
+            
+            <div class="stat-card humidity">
+                <div class="stat-icon">💧</div>
+                <div class="stat-content">
+                    <div class="stat-value" id="humidityValue">--</div>
+                    <div class="stat-label">Humidity</div>
+                    <div class="stat-unit">%</div>
+                </div>
+                <div class="stat-trend" id="humidityTrend"></div>
+            </div>
+            
+            <div class="stat-card rainfall">
+                <div class="stat-icon">🌧️</div>
+                <div class="stat-content">
+                    <div class="stat-value" id="rainfallValue">--</div>
+                    <div class="stat-label">Rainfall</div>
+                    <div class="stat-unit">%</div>
+                </div>
+                <div class="stat-trend" id="rainfallTrend"></div>
+            </div>
+            
+            <div class="stat-card light">
+                <div class="stat-icon" id="lightIcon">💡</div>
+                <div class="stat-content">
+                    <div class="stat-value" id="lightValue">--</div>
+                    <div class="stat-label">Light Level</div>
+                    <div class="stat-unit"></div>
+                </div>
+                <div class="stat-trend" id="lightTrend"></div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button class="control-btn" onclick="toggleAutoRefresh()">
+                <span id="autoRefreshBtn">⏸️ Pause</span>
+            </button>
+            <button class="control-btn" onclick="exportData()">
+                📊 Export Data
+            </button>
+            <button class="control-btn" onclick="showStats()">
+                📈 Statistics
+            </button>
+        </div>
+        
+        <div class="chart-container">
+            <div class="chart-header">
+                <h3>Temperature Trend</h3>
+                <div class="chart-controls">
+                    <select id="tempTimeRange" onchange="updateCharts()">
+                        <option value="1">Last Hour</option>
+                        <option value="6">Last 6 Hours</option>
+                        <option value="24" selected>Last 24 Hours</option>
+                        <option value="168">Last Week</option>
+                    </select>
+                </div>
+            </div>
+            <canvas id="temperatureChart"></canvas>
+        </div>
+        
+        <div class="chart-container">
+            <div class="chart-header">
+                <h3>Humidity & Rainfall</h3>
+                <div class="chart-controls">
+                    <select id="humidityTimeRange" onchange="updateCharts()">
+                        <option value="1">Last Hour</option>
+                        <option value="6">Last 6 Hours</option>
+                        <option value="24" selected>Last 24 Hours</option>
+                        <option value="168">Last Week</option>
+                    </select>
+                </div>
+            </div>
+            <canvas id="humidityChart"></canvas>
+        </div>
+        
+        <div class="data-table-container" id="dataTable" style="display: none;">
+            <div class="table-header">
+                <h3>Recent Readings</h3>
+                <button onclick="toggleDataTable()">❌ Close</button>
+            </div>
+            <div class="table-wrapper">
+                <table id="readingsTable">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Temperature</th>
+                            <th>Humidity</th>
+                            <th>Rainfall</th>
+                            <th>Light</th>
+                            <th>Device</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Modal -->
+    <div id="statsModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>📈 Statistics (Last 24 Hours)</h3>
+                <button onclick="closeStatsModal()">❌</button>
+            </div>
+            <div id="statsContent">
+                <!-- Stats will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
