@@ -188,87 +188,6 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 CMD ["node", "server.js"]
 EOF
 
-# Create docker-compose.yml
-cat > docker-compose.yml << 'EOF'
-version: '3.8'
-
-services:
-  weather-app:
-    build: .
-    container_name: weather-app
-    restart: unless-stopped
-    ports:
-      - "6065:6065"
-    volumes:
-      - weather_data:/app/data
-    environment:
-      - NODE_ENV=production
-      - PORT=6065
-      - DB_PATH=/app/data/weather_data.db
-    networks:
-      - weather-network
-
-  nginx:
-    image: nginx:alpine
-    container_name: weather-nginx
-    restart: unless-stopped
-    ports:
-      - "8080:80"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-    depends_on:
-      - weather-app
-    networks:
-      - weather-network
-
-volumes:
-  weather_data:
-
-networks:
-  weather-network:
-    driver: bridge
-EOF
-
-# Create nginx.conf
-cat > nginx.conf << 'EOF'
-events {
-    worker_connections 1024;
-}
-
-http {
-    upstream weather_app {
-        server weather-app:6065;
-    }
-
-    server {
-        listen 80;
-        server_name _;
-
-        location / {
-            proxy_pass http://weather_app;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-        }
-
-        location /api/ {
-            proxy_pass http://weather_app;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-        }
-
-        location /health {
-            proxy_pass http://weather_app/health;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-        }
-    }
-}
-EOF
-
 # Create public directory and files
 mkdir -p public
 
@@ -375,23 +294,39 @@ cat > public/index.html << 'EOF'
 </html>
 EOF
 
-# Check what's using port 8080
-echo "🔍 Checking port 8080 usage..."
-netstat -tlnp | grep :8080 || echo "Port 8080 appears free"
+# Create docker-compose.yml
+cat > docker-compose.yml << 'EOF'
+version: '3.8'
+
+services:
+  weather-app:
+    build: .
+    container_name: weather-app
+    restart: unless-stopped
+    ports:
+      - "6065:6065"
+    volumes:
+      - weather_data:/app/data
+    environment:
+      - NODE_ENV=production
+      - PORT=6065
+      - DB_PATH=/app/data/weather_data.db
+
+volumes:
+  weather_data:
+EOF
+
+# Check what's using port 6065
+echo "🔍 Checking port 6065 usage..."
+netstat -tlnp | grep :6065 || echo "Port 6065 appears free"
 
 # Stop any existing containers
 echo "🛑 Stopping existing containers..."
 docker-compose down --remove-orphans 2>/dev/null || true
 
-# Stop any Apache/Nginx services that might be running
-echo "🛑 Stopping system web servers..."
-systemctl stop apache2 2>/dev/null || true
-systemctl stop nginx 2>/dev/null || true
-systemctl stop httpd 2>/dev/null || true
-
-# Kill any processes using port 8080
-echo "🔫 Killing processes on port 8080..."
-fuser -k 8080/tcp 2>/dev/null || true
+# Kill any processes using port 6065
+echo "🔫 Killing processes on port 6065..."
+fuser -k 6065/tcp 2>/dev/null || true
 
 # Clean up Docker system
 echo "🧹 Cleaning up..."
@@ -414,18 +349,15 @@ echo "🧪 Testing endpoints..."
 echo -n "App Health: "
 curl -s http://localhost:6065/health >/dev/null && echo "✅ OK" || echo "❌ FAILED"
 
-echo -n "Nginx Health: "
-curl -s http://localhost:8080/health >/dev/null && echo "✅ OK" || echo "❌ FAILED"
-
 echo -n "Dashboard: "
-curl -s http://localhost:8080/ >/dev/null && echo "✅ OK" || echo "❌ FAILED"
+curl -s http://localhost:6065/ >/dev/null && echo "✅ OK" || echo "❌ FAILED"
 
 # Show final status
 echo ""
 echo "🎉 Deployment Complete!"
-echo "🌐 Dashboard: http://37.114.41.124:8080"
-echo "🔌 API: http://37.114.41.124:8080/api/"
-echo "🏥 Health: http://37.114.41.124:8080/health"
+echo "🌐 Dashboard: http://37.114.41.124:6065"
+echo "🔌 API: http://37.114.41.124:6065/api/"
+echo "🏥 Health: http://37.114.41.124:6065/health"
 echo ""
 echo "📋 Useful commands:"
 echo "  - View logs: docker-compose logs -f"
