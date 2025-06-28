@@ -3,9 +3,6 @@ FROM node:18-alpine
 # Set working directory
 WORKDIR /app
 
-# Install sqlite3 build dependencies
-RUN apk add --no-cache python3 make g++ sqlite
-
 # Copy package files
 COPY package*.json ./
 
