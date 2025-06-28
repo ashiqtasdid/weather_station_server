@@ -213,7 +213,7 @@ services:
     container_name: weather-nginx
     restart: unless-stopped
     ports:
-      - "80:80"
+      - "8080:80"
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
@@ -375,9 +375,23 @@ cat > public/index.html << 'EOF'
 </html>
 EOF
 
+# Check what's using port 8080
+echo "🔍 Checking port 8080 usage..."
+netstat -tlnp | grep :8080 || echo "Port 8080 appears free"
+
 # Stop any existing containers
 echo "🛑 Stopping existing containers..."
 docker-compose down --remove-orphans 2>/dev/null || true
+
+# Stop any Apache/Nginx services that might be running
+echo "🛑 Stopping system web servers..."
+systemctl stop apache2 2>/dev/null || true
+systemctl stop nginx 2>/dev/null || true
+systemctl stop httpd 2>/dev/null || true
+
+# Kill any processes using port 8080
+echo "🔫 Killing processes on port 8080..."
+fuser -k 8080/tcp 2>/dev/null || true
 
 # Clean up Docker system
 echo "🧹 Cleaning up..."
@@ -401,17 +415,17 @@ echo -n "App Health: "
 curl -s http://localhost:6065/health >/dev/null && echo "✅ OK" || echo "❌ FAILED"
 
 echo -n "Nginx Health: "
-curl -s http://localhost:80/health >/dev/null && echo "✅ OK" || echo "❌ FAILED"
+curl -s http://localhost:8080/health >/dev/null && echo "✅ OK" || echo "❌ FAILED"
 
 echo -n "Dashboard: "
-curl -s http://localhost:80/ >/dev/null && echo "✅ OK" || echo "❌ FAILED"
+curl -s http://localhost:8080/ >/dev/null && echo "✅ OK" || echo "❌ FAILED"
 
 # Show final status
 echo ""
 echo "🎉 Deployment Complete!"
-echo "🌐 Dashboard: http://37.114.41.124"
-echo "🔌 API: http://37.114.41.124/api/"
-echo "🏥 Health: http://37.114.41.124/health"
+echo "🌐 Dashboard: http://37.114.41.124:8080"
+echo "🔌 API: http://37.114.41.124:8080/api/"
+echo "🏥 Health: http://37.114.41.124:8080/health"
 echo ""
 echo "📋 Useful commands:"
 echo "  - View logs: docker-compose logs -f"
