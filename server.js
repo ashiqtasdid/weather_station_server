@@ -5,7 +5,7 @@ const path = require('path');
 const fs = require('fs');
 
 const app = express();
-const PORT = process.env.PORT || 3022;
+const PORT = process.env.PORT || 6065;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'data', 'weather_data.db');
 
@@ -44,10 +44,20 @@ db.serialize(() => {
     temperature REAL,
     humidity REAL,
     rainfall INTEGER,
+    pressure REAL,
     light_level TEXT,
     device_id TEXT DEFAULT 'weather_station_01',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
+
+  // Add pressure column if it doesn't exist (for existing databases)
+  db.run(`ALTER TABLE sensor_data ADD COLUMN pressure REAL`, (err) => {
+    if (err && !err.message.includes('duplicate column')) {
+      console.log('Pressure column already exists or created');
+    } else {
+      console.log('Added pressure column to existing database');
+    }
+  });
 
   // Create index for better performance
   db.run(`CREATE INDEX IF NOT EXISTS idx_timestamp ON sensor_data(timestamp)`);
@@ -58,7 +68,7 @@ db.serialize(() => {
 
 // API endpoint to receive sensor data from ESP8266
 app.post('/api/data', (req, res) => {
-  const { temperature, humidity, rainfall, light_level, device_id } = req.body;
+  const { temperature, humidity, rainfall, pressure, light_level, device_id } = req.body;
   
   // Validate data
   if (temperature === undefined || humidity === undefined || 
@@ -74,18 +84,23 @@ app.post('/api/data', (req, res) => {
     return res.status(400).json({ error: 'Invalid numeric data' });
   }
   
+  // Validate pressure if provided
+  if (pressure !== undefined && isNaN(pressure)) {
+    return res.status(400).json({ error: 'Invalid pressure data' });
+  }
+  
   // Insert data into database
   const stmt = db.prepare(`INSERT INTO sensor_data 
-    (temperature, humidity, rainfall, light_level, device_id) 
-    VALUES (?, ?, ?, ?, ?)`);
+    (temperature, humidity, rainfall, pressure, light_level, device_id) 
+    VALUES (?, ?, ?, ?, ?, ?)`);
   
-  stmt.run(temperature, humidity, rainfall, light_level, device_id || 'weather_station_01', function(err) {
+  stmt.run(temperature, humidity, rainfall, pressure || null, light_level, device_id || 'weather_station_01', function(err) {
     if (err) {
       console.error('Database error:', err);
       return res.status(500).json({ error: 'Database error' });
     }
     
-    console.log(`📊 New data received from ${device_id || 'default'}: T:${temperature}°C H:${humidity}% R:${rainfall}% L:${light_level}`);
+    console.log(`📊 New data received from ${device_id || 'default'}: T:${temperature}°C H:${humidity}% R:${rainfall}% P:${pressure}Pa L:${light_level}`);
     res.json({ 
       success: true, 
       message: 'Data received successfully',
@@ -157,6 +172,9 @@ app.get('/api/stats', (req, res) => {
     AVG(humidity) as avg_humidity,
     MIN(humidity) as min_humidity,
     MAX(humidity) as max_humidity,
+    AVG(pressure) as avg_pressure,
+    MIN(pressure) as min_pressure,
+    MAX(pressure) as max_pressure,
     AVG(rainfall) as avg_rainfall,
     COUNT(*) as total_readings,
     COUNT(DISTINCT device_id) as device_count

@@ -4,7 +4,7 @@ FROM node:18-alpine
 WORKDIR /app
 
 # Install sqlite3 build dependencies
-RUN apk add --no-cache python3 make g++
+RUN apk add --no-cache python3 make g++ sqlite
 
 # Copy package files
 COPY package*.json ./
@@ -15,15 +15,16 @@ RUN npm ci --only=production
 # Copy application files
 COPY . .
 
-# Create directory for SQLite database
-RUN mkdir -p /app/data
+# Create directory for SQLite database with proper permissions
+RUN mkdir -p /app/data && \
+    mkdir -p /app/logs
 
 # Expose port
-EXPOSE 3000
+EXPOSE 6065
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node healthcheck.js
+  CMD wget --no-verbose --tries=1 --spider http://localhost:6065/health || exit 1
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && \
